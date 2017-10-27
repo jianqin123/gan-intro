@@ -25,7 +25,7 @@ seed = 42
 np.random.seed(seed)
 tf.set_random_seed(seed)
 
-
+#the distribution of x
 class DataDistribution(object):
     def __init__(self):
         self.mu = 4
@@ -36,7 +36,7 @@ class DataDistribution(object):
         samples.sort()
         return samples
 
-
+#the distrubution of Z
 class GeneratorDistribution(object):
     def __init__(self, range):
         self.range = range
@@ -45,7 +45,7 @@ class GeneratorDistribution(object):
         return np.linspace(-self.range, self.range, N) + \
             np.random.random(N) * 0.01
 
-
+#y=x*w+b return y
 def linear(input, output_dim, scope=None, stddev=1.0):
     with tf.variable_scope(scope or 'linear'):
         w = tf.get_variable(
@@ -82,8 +82,10 @@ def discriminator(input, h_dim, minibatch_layer=True):
     return h3
 
 
+
 def minibatch(input, num_kernels=5, kernel_dim=3):
     x = linear(input, num_kernels * kernel_dim, scope='minibatch', stddev=0.02)
+
     activation = tf.reshape(x, (-1, num_kernels, kernel_dim))
     diffs = tf.expand_dims(activation, 3) - \
         tf.expand_dims(tf.transpose(activation, [1, 2, 0]), 0)
@@ -119,6 +121,7 @@ class GAN(object):
         # distribution as input, and passes them through an MLP.
         with tf.variable_scope('G'):
             self.z = tf.placeholder(tf.float32, shape=(params.batch_size, 1))
+            #self.G:the generation data
             self.G = generator(self.z, params.hidden_size)
 
         # The discriminator tries to tell the difference between samples from
@@ -128,6 +131,7 @@ class GAN(object):
         # Here we create two copies of the discriminator network
         # that share parameters, as you cannot use the same network with
         # different inputs in TensorFlow.
+        # x:the original data distribution
         self.x = tf.placeholder(tf.float32, shape=(params.batch_size, 1))
         with tf.variable_scope('D'):
             self.D1 = discriminator(
@@ -135,6 +139,7 @@ class GAN(object):
                 params.hidden_size,
                 params.minibatch
             )
+        #reuse the trained parameters
         with tf.variable_scope('D', reuse=True):
             self.D2 = discriminator(
                 self.G,
@@ -151,10 +156,13 @@ class GAN(object):
         self.d_params = [v for v in vars if v.name.startswith('D/')]
         self.g_params = [v for v in vars if v.name.startswith('G/')]
 
+        #optimize one keeping another unchanged
         self.opt_d = optimizer(self.loss_d, self.d_params)
         self.opt_g = optimizer(self.loss_g, self.g_params)
 
-
+# data:real data distribution
+# gen:the distribution of z
+#
 def train(model, data, gen, params):
     anim_frames = []
 
@@ -243,7 +251,7 @@ def samples(
 
     return db, pd, pg
 
-
+#
 def plot_distributions(samps, sample_range):
     db, pd, pg = samps
     db_x = np.linspace(-sample_range, sample_range, len(db))
@@ -259,7 +267,7 @@ def plot_distributions(samps, sample_range):
     plt.legend()
     plt.show()
 
-
+#save to file
 def save_animation(anim_frames, anim_path, sample_range):
     f, ax = plt.subplots(figsize=(6, 4))
     f.suptitle('1D Generative Adversarial Network', fontsize=15)
@@ -324,7 +332,7 @@ def parse_args():
                         help='MLP hidden size')
     parser.add_argument('--batch-size', type=int, default=8,
                         help='the batch size')
-    parser.add_argument('--minibatch', action='store_true',
+    parser.add_argument('--minibatch',type=bool,default=True,
                         help='use minibatch discrimination')
     parser.add_argument('--log-every', type=int, default=10,
                         help='print loss after this many steps')
